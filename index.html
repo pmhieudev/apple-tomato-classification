@@ -31,8 +31,9 @@
 
     // Load model
     async function loadModel() {
+      console.log("🔄 Loading model...");
       model = await tf.loadLayersModel('model.json');
-      console.log("Model loaded successfully!");
+      console.log("✅ Model loaded successfully!");
     }
 
     loadModel(); // Load model when page loads
@@ -42,11 +43,15 @@
       const file = event.target.files[0];
       if (!file) return;
 
+      console.log("📂 Image selected: " + file.name);
+
       const reader = new FileReader();
       reader.onload = function(e) {
         const image = new Image();
         image.src = e.target.result;
         image.onload = function() {
+          console.log("🖼️ Image loaded successfully!");
+
           const canvas = document.getElementById('canvasId');
           const ctx = canvas.getContext("2d");
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -54,6 +59,8 @@
           canvas.style.display = "block";
           imageLoaded = true;
           document.getElementById("run_model_button").disabled = false;
+
+          console.log("🎨 Image displayed on canvas.");
         };
       };
       reader.readAsDataURL(file);
@@ -62,9 +69,11 @@
     // Run model
     async function run_model() {
       if (!imageLoaded || !model) {
-        alert("Please upload an image and ensure the model is loaded.");
+        console.warn("⚠️ Please upload an image and ensure the model is loaded.");
         return;
       }
+
+      console.log("🚀 Running model prediction...");
 
       // Get image from canvas
       const canvas = document.getElementById('canvasId');
@@ -75,6 +84,8 @@
       // Make prediction
       const prediction = model.predict(tensor);
       const result = await prediction.data();
+
+      console.log("✅ Prediction completed: ", result);
 
       // Show output
       document.getElementById('output').innerHTML = "Prediction: " + result;
