@@ -32,6 +32,26 @@
     <script>
         let model;  // Biến lưu model
 
+        // Hiển thị ảnh ngay khi chọn file
+        document.getElementById("imageUpload").addEventListener("change", function (event) {
+            if (event.target.files.length === 0) return;
+
+            const file = event.target.files[0];
+            const image = new Image();
+            image.src = URL.createObjectURL(file);
+
+            image.onload = function () {
+                console.log("✅ Image uploaded and displayed!");
+
+                // Hiển thị ảnh trên canvas
+                const canvas = document.getElementById("canvasId");
+                const ctx = canvas.getContext("2d");
+                canvas.style.display = "block";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(image, 0, 0, 224, 224);
+            };
+        });
+
         // Load model khi bấm nút
         document.getElementById("loadModelBtn").addEventListener("click", async () => {
             try {
@@ -53,40 +73,26 @@
                 return;
             }
 
-            const fileInput = document.getElementById("imageUpload");
-            if (fileInput.files.length === 0) {
+            const canvas = document.getElementById("canvasId");
+            if (!canvas.style.display) {
                 console.error("⚠️ Chưa chọn ảnh!");
                 return;
             }
 
-            const image = new Image();
-            const file = fileInput.files[0];
-            image.src = URL.createObjectURL(file);
+            // Chuyển ảnh thành tensor
+            let tensor = tf.browser.fromPixels(canvas)
+                .resizeNearestNeighbor([224, 224])
+                .toFloat()
+                .expandDims(0);
 
-            image.onload = async function () {
-                console.log("✅ Image loaded!");
+            // Chạy model dự đoán
+            const predictions = model.predict(tensor);
+            predictions.print();  // Log kết quả dự đoán
 
-                // Hiển thị ảnh trên canvas
-                const canvas = document.getElementById("canvasId");
-                const ctx = canvas.getContext("2d");
-                canvas.style.display = "block";
-                ctx.drawImage(image, 0, 0, 224, 224);
+            // Hiển thị kết quả lên trang web
+            document.getElementById("output").innerText = "Dự đoán: " + predictions.dataSync();
 
-                // Chuyển ảnh thành tensor
-                let tensor = tf.browser.fromPixels(canvas)
-                    .resizeNearestNeighbor([224, 224])
-                    .toFloat()
-                    .expandDims(0);
-
-                // Chạy model dự đoán
-                const predictions = model.predict(tensor);
-                predictions.print();  // Log kết quả dự đoán
-
-                // Hiển thị kết quả lên trang web
-                document.getElementById("output").innerText = "Dự đoán: " + predictions.dataSync();
-
-                console.log("✅ Model ran successfully!");
-            };
+            console.log("✅ Model ran successfully!");
         });
 
     </script>
