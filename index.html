@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Labeling WebApp</title>
+</head>
+<body>
+  <h1 style='text-align: center; margin-bottom: -35px;'>Image Labeling WebApp</h1>
+  <br><br>
+
+  <!-- Upload image -->
+  <label for="upload_image">Upload an image to classify:</label>
+  <input type="file" id="upload_image" accept="image/*">
+  
+  <!-- Run model button -->
+  <br><br>
+  <button id="run_model_button" onclick="run_model()" disabled>Run Model</button>
+
+  <!-- Display Image -->
+  <br><br>
+  <canvas id="canvasId" width="224" height="224" style="display:none; border: 1px solid black;"></canvas>
+  
+  <!-- Output Result -->
+  <div id="output" style="font-family:courier; font-size:24px; height:50px"></div>
+
+  <!-- Load TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+
+  <script>
+    let model;
+    let imageLoaded = false;
+
+    // Load model
+    async function loadModel() {
+      model = await tf.loadLayersModel('model.json');
+      console.log("Model loaded successfully!");
+    }
+
+    loadModel(); // Load model when page loads
+
+    // Handle image upload
+    document.getElementById('upload_image').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const image = new Image();
+        image.src = e.target.result;
+        image.onload = function() {
+          const canvas = document.getElementById('canvasId');
+          const ctx = canvas.getContext("2d");
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          canvas.style.display = "block";
+          imageLoaded = true;
+          document.getElementById("run_model_button").disabled = false;
+        };
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Run model
+    async function run_model() {
+      if (!imageLoaded || !model) {
+        alert("Please upload an image and ensure the model is loaded.");
+        return;
+      }
+
+      // Get image from canvas
+      const canvas = document.getElementById('canvasId');
+      let tensor = tf.browser.fromPixels(canvas).toFloat();
+      tensor = tensor.div(255.0);  // Normalize to [0,1]
+      tensor = tensor.expandDims(0); // Reshape to [1, height, width, channels]
+
+      // Make prediction
+      const prediction = model.predict(tensor);
+      const result = await prediction.data();
+
+      // Show output
+      document.getElementById('output').innerHTML = "Prediction: " + result;
+
+      // Dispose tensors
+      tensor.dispose();
+      prediction.dispose();
+    }
+  </script>
+</body>
+</html>
