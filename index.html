@@ -1,99 +1,95 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Image Labeling WebApp</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Labeling WebApp</title>
 </head>
 <body>
-  <h1 style='text-align: center; margin-bottom: -35px;'>Image Labeling WebApp</h1>
-  <br><br>
 
-  <!-- Upload image -->
-  <label for="upload_image">Upload an image to classify:</label>
-  <input type="file" id="upload_image" accept="image/*">
-  
-  <!-- Run model button -->
-  <br><br>
-  <button id="run_model_button" onclick="run_model()" disabled>Run Model</button>
+    <h1 style="text-align: center;">Image Labeling WebApp</h1>
 
-  <!-- Display Image -->
-  <br><br>
-  <canvas id="canvasId" width="224" height="224" style="display:none; border: 1px solid black;"></canvas>
-  
-  <!-- Output Result -->
-  <div id="output" style="font-family:courier; font-size:24px; height:50px"></div>
+    <!-- Upload Image -->
+    <label for="imageUpload">Upload an image:</label>
+    <input type="file" id="imageUpload" accept="image/*" />
+    <br><br>
 
-  <!-- Load TensorFlow.js -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <!-- Load Model -->
+    <button id="loadModelBtn">Load Model</button>
+    <button id="runModelBtn" disabled>Run Model</button>
+    
+    <br><br>
 
-  <script>
-    let model;
-    let imageLoaded = false;
+    <!-- Canvas to Display Image -->
+    <canvas id="canvasId" width="224" height="224" style="border: 1px solid black; display:none;"></canvas>
 
-    // Load model
-    async function loadModel() {
-      console.log("🔄 Loading model...");
-      model = await tf.loadLayersModel('model.json');
-      console.log("✅ Model loaded successfully!");
-    }
+    <!-- Output -->
+    <div id="output" style="font-family:courier; font-size:20px; margin-top:20px;"></div>
 
-    loadModel(); // Load model when page loads
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 
-    // Handle image upload
-    document.getElementById('upload_image').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    <script>
+        let model;  // Biến lưu model
 
-      console.log("📂 Image selected: " + file.name);
+        // Load model khi bấm nút
+        document.getElementById("loadModelBtn").addEventListener("click", async () => {
+            try {
+                const modelUrl = "model.json";  // Đảm bảo file model đúng thư mục
+                model = await tf.loadLayersModel(modelUrl);
+                console.log("✅ Model loaded successfully!");
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const image = new Image();
-        image.src = e.target.result;
-        image.onload = function() {
-          console.log("🖼️ Image loaded successfully!");
+                // Bật nút chạy model sau khi load xong
+                document.getElementById("runModelBtn").disabled = false;
+            } catch (error) {
+                console.error("❌ Error loading model:", error);
+            }
+        });
 
-          const canvas = document.getElementById('canvasId');
-          const ctx = canvas.getContext("2d");
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-          canvas.style.display = "block";
-          imageLoaded = true;
-          document.getElementById("run_model_button").disabled = false;
+        // Chạy model khi bấm nút
+        document.getElementById("runModelBtn").addEventListener("click", async () => {
+            if (!model) {
+                console.error("⚠️ Model chưa được load!");
+                return;
+            }
 
-          console.log("🎨 Image displayed on canvas.");
-        };
-      };
-      reader.readAsDataURL(file);
-    });
+            const fileInput = document.getElementById("imageUpload");
+            if (fileInput.files.length === 0) {
+                console.error("⚠️ Chưa chọn ảnh!");
+                return;
+            }
 
-    // Run model
-    async function run_model() {
-      if (!imageLoaded || !model) {
-        console.warn("⚠️ Please upload an image and ensure the model is loaded.");
-        return;
-      }
+            const image = new Image();
+            const file = fileInput.files[0];
+            image.src = URL.createObjectURL(file);
 
-      console.log("🚀 Running model prediction...");
+            image.onload = async function () {
+                console.log("✅ Image loaded!");
 
-      // Get image from canvas
-      const canvas = document.getElementById('canvasId');
-      let tensor = tf.browser.fromPixels(canvas).toFloat();
-      tensor = tensor.div(255.0);  // Normalize to [0,1]
-      tensor = tensor.expandDims(0); // Reshape to [1, height, width, channels]
+                // Hiển thị ảnh trên canvas
+                const canvas = document.getElementById("canvasId");
+                const ctx = canvas.getContext("2d");
+                canvas.style.display = "block";
+                ctx.drawImage(image, 0, 0, 224, 224);
 
-      // Make prediction
-      const prediction = model.predict(tensor);
-      const result = await prediction.data();
+                // Chuyển ảnh thành tensor
+                let tensor = tf.browser.fromPixels(canvas)
+                    .resizeNearestNeighbor([224, 224])
+                    .toFloat()
+                    .expandDims(0);
 
-      console.log("✅ Prediction completed: ", result);
+                // Chạy model dự đoán
+                const predictions = model.predict(tensor);
+                predictions.print();  // Log kết quả dự đoán
 
-      // Show output
-      document.getElementById('output').innerHTML = "Prediction: " + result;
+                // Hiển thị kết quả lên trang web
+                document.getElementById("output").innerText = "Dự đoán: " + predictions.dataSync();
 
-      // Dispose tensors
-      tensor.dispose();
-      prediction.dispose();
-    }
-  </script>
+                console.log("✅ Model ran successfully!");
+            };
+        });
+
+    </script>
+
 </body>
 </html>
